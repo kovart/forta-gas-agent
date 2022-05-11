@@ -49,7 +49,7 @@ EVM-compatible chains that support [EIPS-1559](https://eips.ethereum.org/EIPS/ei
 
 - Support for multiple analysers
 - Support for protocol-specific configurations
-- Values interpolation (missing values in the intervals)
+- Values interpolation for contracts with irregular transactions
 - Noise values filtering to improve prediction accuracy
 - Demo server with real-world data and prediction results
 
