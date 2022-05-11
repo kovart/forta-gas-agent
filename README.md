@@ -2,6 +2,8 @@
 
 ## Description
 
+<img alt="Ronin Bridge gas usage" src="./blob/ronin-bridge.png">
+
 This agent helps to detect unusual high gas usage for specific protocols.
 At the moment, the agent analyses only the value of `priorityFeePerGas` ([EIPS-1559](https://eips.ethereum.org/EIPS/eip-1559)),
 which is calculated according the following formula:
@@ -25,10 +27,6 @@ The demo server can be started with the command:
 cd ./research/
 npm run start
 ```
-
-### Ronin Bridge demo
-
-<img alt="Ronin Bridge gas usage" src="./blob/ronin-bridge.png">
 
 ## Supported Chains
 
