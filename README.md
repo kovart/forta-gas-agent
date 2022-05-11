@@ -15,11 +15,11 @@ priorityFeePerGas = min(transaction.maxPriorityFeePerGas, transaction.maxFeePerG
 ```
 
 The main analyser `holt-winters` works with the following algorithm: 
-1. Group the data by hours (13:00, 14:00, 15:00, ...)
-2. Choose the maximal values of  `priorityFeePerGas` for each group
+1. Group the data by hours _(13:00, 14:00, 15:00, ...)_
+2. Choose the maximal values of `priorityFeePerGas` for each group
 3. Interpolate the values for the empty hours using the easy function **f(x) = x^5**
 4. Reduce noise values with Kalman filter
-5. Create the forecast with [Holt-Winters algorithm](https://otexts.com/fpp2/holt-winters.html)
+5. Create the forecast with [Holt-Winters method](https://otexts.com/fpp2/holt-winters.html)
 6. Measure deviation of real and expected values
 7. If the deviation is greater than the `changeRate` then fire an alert
 
@@ -52,6 +52,21 @@ EVM-compatible chains that support [EIPS-1559](https://eips.ethereum.org/EIPS/ei
 - Values interpolation (missing values in the intervals)
 - Noise values filtering to improve prediction accuracy
 - Demo server with real-world data and prediction results
+
+## Analysers
+
+### Holt-Winters
+
+**Key:** "holt-winters"
+
+#### Configuration
+
+- `alpha` сoefficient for the level smoothing Defau _(optional)_ &nbsp;|&nbsp; Default: **0**
+- `gamma` сoefficient for the trend smoothing _(optional)_ &nbsp;|&nbsp; Default: **0**
+- `delta` сoefficient for the seasonal smoothing _(optional)_ &nbsp;|&nbsp; Default: **0**
+- `changeRate` minimum difference rate after which the value is considered anomalous, e.g. 0.5 = 50%, 3 = 300% _(required)_ &nbsp;|&nbsp; Default: **3**
+- `trainingCycles` number of iterations for selecting optimal сoefficients _(required)_ &nbsp;|&nbsp; Default: **20**
+- `seasonLength` number of values per season _(required)_ &nbsp;|&nbsp; Default: 7 (days) \* 24 (hours) = **168** (hours)
 
 ## Alerts
 
