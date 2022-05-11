@@ -14,8 +14,6 @@ which is calculated according the following formula:
 priorityFeePerGas = min(transaction.maxPriorityFeePerGas, transaction.maxFeePerGas - block.baseFeePerGas)
 ```
 
-This value allows you to most accurately separate the anomalous values from the noise, which is very pronounced in such parameters as: gasUsed, gaslimit, 
-
 The main analyser `holt-winters` works with the following algorithm: 
 1. Group the data by hours (13:00, 14:00, 15:00, ...)
 2. Choose the maximal values of  `priorityFeePerGas` for each group
