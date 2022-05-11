@@ -1,7 +1,11 @@
 {
-  "name": "forta-anomalous-gas-usage-agent",
+  "name": "forta-gas-agent",
   "version": "0.0.1",
-  "description": "Forta Anomalous Gas Usage Agent",
+  "description": "Forta Anomalous Gas Usage Agent. This agent helps to detect unusual high gas usage for specific protocols.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kovart/forta-gas-agent"
+  },
   "chainIds": [
     1
   ],
