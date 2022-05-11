@@ -6,7 +6,7 @@
   <img alt="Ronin Bridge gas usage" src="./blob/ronin-bridge.png">
 </p>
 
-This agent helps to detect unusual high gas usage for specific protocols.
+This agent helps to detect unusual high gas usage for the specified protocols.
 At the moment, the agent analyses only the value of `priorityFeePerGas` ([EIPS-1559](https://eips.ethereum.org/EIPS/eip-1559)),
 which is calculated according the following formula:
 
@@ -14,11 +14,24 @@ which is calculated according the following formula:
 priorityFeePerGas = min(transaction.maxPriorityFeePerGas, transaction.maxFeePerGas - block.baseFeePerGas)
 ```
 
-[Holt-Winters Forecasting](https://otexts.com/fpp2/holt-winters.html) is used to detect anomalous values.
-The analyzer starts checking transactions as soon as it has enough training data,
+This value allows you to most accurately separate the anomalous values from the noise, which is very pronounced in such parameters as: gasUsed, gaslimit, 
+
+The main analyser `holt-winters` works with the following algorithm: 
+1. Group the data by hours (13:00, 14:00, 15:00, ...)
+2. Choose the maximal values of  `priorityFeePerGas` for each group
+3. Interpolate the values for the empty hours using the easy function **f(x) = x^5**
+4. Reduce noise values with Kalman filter
+5. Create the forecast with [Holt-Winters algorithm](https://otexts.com/fpp2/holt-winters.html)
+6. Measure deviation of real and expected values
+7. If the deviation is greater than the `changeRate` then fire an alert
+
+The Holt-Winters analyser starts checking transactions as soon as it has enough training data,
 which it collects during 2 (seasons) * 7 (days) * 24 (hours) = 332 hours.
 
-Also, the agent has a fairly powerful system of working with analysers, but at the moment, only one is available (Holt-Winters).
+---
+
+The agent has a fairly powerful system of working with analysers, but at the moment, only one is available (Holt-Winters).
+It is possible to use the same analysers, but with different parameters. For example, you can initialize the Moving Avarage analysers with different order parameters.
 
 ---
 
@@ -32,7 +45,7 @@ npm run start
 
 ## Supported Chains
 
-EVM-compatible chains
+EVM-compatible chains that support [EIPS-1559](https://eips.ethereum.org/EIPS/eip-1559).
 
 ## Features
 
@@ -40,7 +53,7 @@ EVM-compatible chains
 - Support for protocol-specific configurations
 - Values interpolation (missing values in the intervals)
 - Noise values filtering to improve prediction accuracy
-- Demo server with real-world data
+- Demo server with real-world data and prediction results
 
 ## Alerts
 
