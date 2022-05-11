@@ -75,9 +75,9 @@ EVM-compatible chains that support [EIPS-1559](https://eips.ethereum.org/EIPS/ei
   - Severity is always set to "medium"
   - Type is always set to "suspicious"
   - metadata:
-    - `sender` - sender address
-    - `actualPriorityFeePerGas` - actual value
-    - `expectedPriorityFeePerGas` - predicted value
+    - `sender` sender address
+    - `actualPriorityFeePerGas` actual value
+    - `expectedPriorityFeePerGas` predicted value
 
 ## Test Data
 
