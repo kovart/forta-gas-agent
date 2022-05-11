@@ -1,4 +1,4 @@
-# Anomalous Gas Usage Agent
+# Forta Anomalous Gas Usage Agent
 
 ## Description
 
@@ -26,7 +26,7 @@ cd ./research/
 npm run start
 ```
 
-#### Ronin Bridge demo
+### Ronin Bridge demo
 
 <img alt="Ronin Bridge gas usage" src="./blob/ronin-bridge.png">
 
