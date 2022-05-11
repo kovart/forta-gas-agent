@@ -2,7 +2,9 @@
 
 ## Description
 
-<img alt="Ronin Bridge gas usage" src="./blob/ronin-bridge.png">
+<p align="center">
+  <img alt="Ronin Bridge gas usage" src="./blob/ronin-bridge.png">
+</p>
 
 This agent helps to detect unusual high gas usage for specific protocols.
 At the moment, the agent analyses only the value of `priorityFeePerGas` ([EIPS-1559](https://eips.ethereum.org/EIPS/eip-1559)),
