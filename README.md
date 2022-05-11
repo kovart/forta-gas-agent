@@ -55,7 +55,7 @@ EVM-compatible chains
 
 ## Test Data
 
-The agent behaviour can be verified with the [demo project](./research).
+The agent behaviour can be checked in the [demo project](./research).
 
 Since [default config](./agent-config.json) contains Ronin Bridge contract, 
 the following command catch [the Ronin Hack](https://forta.org/blog/ronin-hack/):
