@@ -1,16 +1,80 @@
 {
   "contracts": [
     {
+      "name": "Axie Infinity: Ronin Bridge",
+      "address": "0x1A2a1c938CE3eC39b6D47113c7955bAa9DD454F2"
+    },
+    {
+      "name": "Polygon (Matic): Bridge",
+      "address": "0xa0c68c638235ee32657e8f720a23cec1bfc77c77"
+    },
+    {
       "name": "Near: Rainbow Bridge",
       "address": "0x23Ddd3e3692d1861Ed57EDE224608875809e127f"
     },
     {
-      "name": "Umbria: Narni Bridge",
-      "address": "0x4103c267Fba03A1Df4fe84Bc28092d629Fa3f422"
+      "name": "zkSync",
+      "address": "0xaBEA9132b05A70803a4E85094fD0e1800777fBEF"
     },
     {
-      "name": "Ronin Bridge",
-      "address": "0x1A2a1c938CE3eC39b6D47113c7955bAa9DD454F2"
+      "name": "Immutable X: Bridge",
+      "address": "0x5FDCCA53617f4d2b9134B29090C87D01058e27e9"
+    },
+    {
+      "name": "Polygon (Matic): Plasma Bridge",
+      "address": "0x401F6c983eA34274ec46f84D70b31C151321188b"
+    },
+    {
+      "name": "Multichain: Router V4",
+      "address": "0x6b7a87899490EcE95443e979cA9485CBE7E71522"
+    },
+    {
+      "name": "dYdX: L2 Perpetual Smart Contract",
+      "address": "0xD54f502e184B6B739d7D27a6410a67dc462D69c8"
+    },
+    {
+      "name": "Optimism: Gateway",
+      "address": "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1"
+    },
+    {
+      "name": "ZKSwap",
+      "address": "0x8ECa806Aecc86CE90Da803b080Ca4E3A9b8097ad"
+    },
+    {
+      "name": "Celer Network: cBridge V2",
+      "address": "0x5427FEFA711Eff984124bFBB1AB6fbf5E3DA1820"
+    },
+    {
+      "name": "Orbit Chain: Bridge",
+      "address": "0x1Bf68A9d1EaEe7826b3593C20a0ca93293cb489a"
+    },
+    {
+      "name": "Wormhole: Token Bridge",
+      "address": "0x3ee18B2214AFF97000D974cf647E7C347E8fa585"
+    },
+    {
+      "name": "Allbridge: Bridge",
+      "address": "0xBBbD1BbB4f9b936C3604906D7592A644071dE884"
+    },
+    {
+      "name": "Sollet: Solana Bridge",
+      "address": "0xeae57ce9cc1984F202e15e038B964bb8bdF7229a"
+    },
+    {
+      "name": "OpenSea: Wyvern Exchange v2",
+      "address": "0x7f268357A8c2552623316e2562D90e642bB538E5"
+    },
+    {
+      "name": "Uniswap V2: Router 2",
+      "address": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
+    },
+    {
+      "name": "Metamask: Swap Router",
+      "address": "0x881D40237659C251811CEC9c364ef91dC08D300C"
+    },
+    {
+      "name": "ENS: ETH Registrar Controller",
+      "address": "0x283Af0B28c62C092C9727F1Ee09c02CA627EB7F5"
     }
   ],
   "analysers": [
