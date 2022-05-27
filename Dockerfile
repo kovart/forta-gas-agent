@@ -19,5 +19,6 @@ WORKDIR /app
 # else if using unobfuscated code:
 COPY --from=builder /app/dist ./src
 COPY package*.json ./
+COPY agent-config.json ./
 RUN npm ci --production
 CMD [ "npm", "run", "start:prod" ]
