@@ -185,6 +185,7 @@ describe('High Priority Fee Agent', () => {
       } as any;
       handleTransaction = provideHandleTransaction(data);
       txEvent = new TestTransactionEvent();
+      txEvent.setBlock(data.currentBlock!.number);
     });
 
     it('skips transaction to non-specified contract', async () => {
@@ -244,10 +245,13 @@ describe('High Priority Fee Agent', () => {
       txEvent.setTo(contract1.address);
       txEvent.setHash('HASH1');
       txEvent.setTimestamp(data.currentBlock!.timestamp);
-      data.currentBlock = { ...data.currentBlock, baseFeePerGas: EthersBigNumber.from(100) } as any;
+      data.currentBlock = {
+        ...data.currentBlock,
+        baseFeePerGas: EthersBigNumber.from(100).mul(1e9),
+      } as any;
       mockProvider.getTransaction.mockResolvedValueOnce({
-        maxPriorityFeePerGas: EthersBigNumber.from(300),
-        maxFeePerGas: EthersBigNumber.from(300),
+        maxPriorityFeePerGas: EthersBigNumber.from(300).mul(1e9),
+        maxFeePerGas: EthersBigNumber.from(300).mul(1e9),
       });
       mockAnalyser.isAnomaly.mockResolvedValue({ isAnomaly: false });
 
@@ -264,10 +268,10 @@ describe('High Priority Fee Agent', () => {
 
       mockProvider.getTransaction.mockReset();
       mockProvider.getTransaction.mockResolvedValueOnce({
-        maxPriorityFeePerGas: EthersBigNumber.from(300),
-        maxFeePerGas: EthersBigNumber.from(500),
+        maxPriorityFeePerGas: EthersBigNumber.from(300).mul(1e9),
+        maxFeePerGas: EthersBigNumber.from(500).mul(1e9),
       });
-      txEvent.setHash('HASH2')
+      txEvent.setHash('HASH2');
       data.isTrainedByContract[contract1.address] = true;
       data.transactionsByContract[contract1.address] = [];
 
