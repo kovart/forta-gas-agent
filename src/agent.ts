@@ -65,6 +65,11 @@ const provideHandleTransaction = (data: DependencyContainer): HandleTransaction 
     const contractAddress = txEvent.to?.toLowerCase();
     const block = data.currentBlock!;
 
+    if (block.number !== txEvent.blockNumber) {
+      console.error('Cached block number differs from transaction block number');
+      return findings;
+    }
+
     if (!block.baseFeePerGas) return findings;
 
     if (!contractAddress || !data.contracts.find(({ address }) => address === contractAddress)) {
@@ -73,15 +78,16 @@ const provideHandleTransaction = (data: DependencyContainer): HandleTransaction 
 
     const tx = await data.provider.getTransaction(txEvent.hash);
 
-    if (!tx.maxPriorityFeePerGas || !tx.maxFeePerGas) return findings;
+    if (!tx || !tx.maxPriorityFeePerGas || !tx.maxFeePerGas) return findings;
 
     // https://eips.ethereum.org/EIPS/eip-1559
+    // Since the value can exceed the maximum JS Number value, we denominate it from wei to gwei
     const priorityFeePerGas = BigNumber.min(
       new BigNumber(tx.maxPriorityFeePerGas.toHexString()),
-      new BigNumber(tx.maxFeePerGas?.toHexString()).minus(
+      new BigNumber(tx.maxFeePerGas.toHexString()).minus(
         new BigNumber(block.baseFeePerGas.toHexString()),
       ),
-    );
+    ).div(1e9);
 
     const trainingTransaction: AnalyserTransaction = {
       timestamp: txEvent.timestamp,
@@ -102,7 +108,7 @@ const provideHandleTransaction = (data: DependencyContainer): HandleTransaction 
             contractAddress,
             expected!,
             actual!,
-            txEvent.from
+            txEvent.from,
           ),
         );
       }

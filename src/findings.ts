@@ -5,11 +5,11 @@ export const createFinding = (
   analyserKey: string,
   analyserName: string,
   contractAddress: string,
-  expectedPriorityFeePerGas: number,
-  actualPriorityFeePerGas: number,
+  expectedPriorityFeePerGas: number, // gwei
+  actualPriorityFeePerGas: number, // gwei
   senderAddress: string,
 ) => {
-  const toGWei = (val: number) => new BigNumber(val).div(1e9).toFormat(2);
+  const formatValue = (val: number | BigNumber) => new BigNumber(val).toFormat(2);
 
   const diffPercent = new BigNumber(actualPriorityFeePerGas)
     .minus(expectedPriorityFeePerGas)
@@ -20,9 +20,9 @@ export const createFinding = (
   return Finding.from({
     alertId: `KOVART-ANOMALOUS-PRIORITY-FEE-` + analyserKey.toUpperCase(),
     name: 'High Priority Fee',
-    description: `${analyserName}: Priority fee ${toGWei(
+    description: `${analyserName}: Priority fee ${formatValue(
       actualPriorityFeePerGas,
-    )}Gwei is ${diffPercent.toFormat(2)}% greater than expected`,
+    )}Gwei is ${formatValue(diffPercent)}% greater than expected`,
     severity: FindingSeverity.Medium,
     type: FindingType.Suspicious,
     addresses: [contractAddress, senderAddress],
