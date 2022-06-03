@@ -5,31 +5,42 @@ import {
   HandleTransaction,
   TransactionEvent,
 } from 'forta-agent';
+import { providers } from 'ethers';
 import BigNumber from 'bignumber.js';
+import LRU from 'lru-cache';
 import { Analyser } from './analysers/analyser';
 import { HoltWintersAnalyser } from './analysers/holt-winters';
-import { AgentConfig, AnalyserTransaction, AnalyserClass, DependencyContainer } from './types';
+import { AgentConfig, AnalyserTransaction, AnalyserClass, DataContainer } from './types';
 import { createFinding } from './findings';
 
-const data: DependencyContainer = {} as DependencyContainer;
+const data: DataContainer = {} as any;
 const agentConfig: AgentConfig = require('../agent-config.json');
-const analysers = [HoltWintersAnalyser];
+const Analysers = [HoltWintersAnalyser];
 
 const provideInitialize = (
-  data: DependencyContainer,
+  data: DataContainer,
   agentConfig: AgentConfig,
   Analysers: AnalyserClass[],
+  provider: providers.JsonRpcProvider,
 ) => {
   return async () => {
-    data.provider = getEthersBatchProvider();
-
+    data.provider = provider;
     // normalize addresses
-    data.contracts = agentConfig.contracts.map((c: any) => ({
+    data.contracts = agentConfig.contracts.map((c) => ({
       ...c,
       address: c.address.toLowerCase(),
     }));
-
-    data.currentBlock = null;
+    data.blocksCache = new LRU({
+      max: 50, // 50 blocks in cache
+      ttl: 1000 * 60 * 15 /* 15min */,
+      fetchMethod: async (blockNumber: number) => {
+        try {
+          return await data.provider.getBlock(blockNumber);
+        } catch {
+          return null;
+        }
+      },
+    });
     data.analysersByContract = {};
     data.transactionsByContract = {};
     data.isTrainedByContract = {};
@@ -40,7 +51,7 @@ const provideInitialize = (
       for (const { key, config } of [...agentConfig.analysers, ...contractAnalysers]) {
         const Analyser = Analysers.find((a) => a.Key === key);
         if (Analyser) {
-          const analyser = new Analyser(config as any);
+          const analyser = new Analyser(config);
           analysers.push(analyser);
         }
       }
@@ -55,7 +66,7 @@ const provideInitialize = (
   };
 };
 
-const provideHandleTransaction = (data: DependencyContainer): HandleTransaction => {
+const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
   return async (txEvent: TransactionEvent) => {
     if (!data.isInitialized) {
       throw new Error('Dependencies are not initialized');
@@ -63,10 +74,10 @@ const provideHandleTransaction = (data: DependencyContainer): HandleTransaction 
 
     const findings: Finding[] = [];
     const contractAddress = txEvent.to?.toLowerCase();
-    const block = data.currentBlock!;
+    const block = await data.blocksCache.fetch(txEvent.blockNumber);
 
-    if (block.number !== txEvent.blockNumber) {
-      console.error('Cached block number differs from transaction block number');
+    if (!block) {
+      console.error('Cannot fetch block data');
       return findings;
     }
 
@@ -121,14 +132,11 @@ const provideHandleTransaction = (data: DependencyContainer): HandleTransaction 
   };
 };
 
-const provideHandleBlock = (data: DependencyContainer): HandleBlock => {
-  return async (blockEvent) => {
+const provideHandleBlock = (data: DataContainer): HandleBlock => {
+  return async () => {
     if (!data.isInitialized) {
       throw new Error('Dependencies are not initialized');
     }
-
-    // cache for next handleTransaction calls
-    data.currentBlock = await data.provider.getBlock(blockEvent.blockNumber);
 
     for (const { address: contractAddress } of data.contracts) {
       let transactions = data.transactionsByContract[contractAddress] || [];
@@ -156,7 +164,7 @@ const provideHandleBlock = (data: DependencyContainer): HandleBlock => {
 };
 
 export default {
-  initialize: provideInitialize(data, agentConfig, analysers),
+  initialize: provideInitialize(data, agentConfig, Analysers, getEthersBatchProvider()),
   handleTransaction: provideHandleTransaction(data),
   handleBlock: provideHandleBlock(data),
 

@@ -1,22 +1,22 @@
 import { createAddress, TestBlockEvent, TestTransactionEvent } from 'forta-agent-tools/lib/tests';
 import { HandleBlock, HandleTransaction } from 'forta-agent';
 import { BigNumber as EthersBigNumber } from 'ethers';
-import BigNumber from 'bignumber.js';
 
 import agent from './agent';
-import { ContractConfig, DependencyContainer } from './types';
+import { AgentConfig, ContractConfig, DataContainer } from './types';
 import { createFinding } from './findings';
 
-const { provideHandleBlock, provideHandleTransaction } = agent;
+const { provideInitialize, provideHandleBlock, provideHandleTransaction } = agent;
 
-const createMockDependencyContainer = (
-  provider: any,
-  contracts: ContractConfig[],
-): DependencyContainer => {
-  const data: DependencyContainer = {
+type MockDataContainer = Omit<jest.MockedObject<DataContainer>, 'blocksCache'> & {
+  blocksCache: { fetch: jest.Mock };
+};
+
+const createMockDataContainer = (provider: any, contracts: ContractConfig[]): MockDataContainer => {
+  const data: MockDataContainer = {
     provider,
     contracts,
-    currentBlock: null,
+    blocksCache: { fetch: jest.fn() },
     isTrainedByContract: {},
     transactionsByContract: {},
     analysersByContract: {},
@@ -58,40 +58,118 @@ const resetMockAnalyser = (analyser: any) => {
 describe('High Priority Fee Agent', () => {
   const mockProvider = createMockProvider();
   const mockAnalyser = createMockAnalyser();
-  const contract1 = { address: createAddress('0x1'), name: 'Test Contract 1' };
-  const contract2 = { address: createAddress('0x2'), name: 'Test Contract 2' };
-  const contract3 = { address: createAddress('0x3'), name: 'Test Contract 3' };
+  const contract1: ContractConfig = { address: createAddress('0x1'), name: 'Test Contract 1' };
+  const contract2: ContractConfig = { address: createAddress('0x2'), name: 'Test Contract 2' };
+  const contract3: ContractConfig = { address: createAddress('0x3'), name: 'Test Contract 3' };
+
+  // simplified version
+  const createAnalyserClass = (key: string) =>
+    class {
+      constructor(public config: any) {}
+      static Key = key;
+    };
 
   beforeEach(() => {
     resetMockProvider(mockProvider);
     resetMockAnalyser(mockAnalyser);
   });
 
+  describe('initialize()', () => {
+    it('initializes correctly', async () => {
+      const Analyser1 = createAnalyserClass('analyser1');
+      const Analyser2 = createAnalyserClass('analyser2');
+      const Analyser3 = createAnalyserClass('analyser3');
+
+      const contracts = [
+        contract1,
+        {
+          ...contract2,
+          analysers: [
+            {
+              key: Analyser3.Key,
+              config: { changeRate: 3, a: 'a3', b: 'b3' },
+            },
+          ],
+        },
+      ];
+
+      const data: DataContainer = {} as any;
+      const agentConfig: AgentConfig = {
+        analysers: [
+          { key: Analyser1.Key, config: { changeRate: 1, a: 'a1', b: 'b1' } },
+          { key: Analyser2.Key, config: { changeRate: 2, a: 'a2', b: 'b2' } },
+        ],
+        contracts: contracts,
+        maxTrainingData: 12345678,
+      };
+
+      await provideInitialize(
+        data,
+        agentConfig,
+        [Analyser1, Analyser2, Analyser3],
+        mockProvider as any,
+      )();
+
+      expect(data.isInitialized).toStrictEqual(true);
+      expect(data.contracts).toStrictEqual([contracts[0], contracts[1]]);
+      expect(data.maxTrainingData).toStrictEqual(agentConfig.maxTrainingData);
+      expect(data.provider).toStrictEqual(mockProvider);
+      expect(data.isTrainedByContract[contracts[0].address]).toStrictEqual(true);
+      expect(data.isTrainedByContract[contracts[1].address]).toStrictEqual(true);
+      expect(data.transactionsByContract[contracts[0].address]).toHaveLength(0);
+      expect(data.transactionsByContract[contracts[1].address]).toHaveLength(0);
+      expect(data.analysersByContract[contracts[0].address][0]).toBeInstanceOf(Analyser1);
+      expect(data.analysersByContract[contracts[0].address][1]).toBeInstanceOf(Analyser2);
+      expect(data.analysersByContract[contracts[1].address][0]).toBeInstanceOf(Analyser1);
+      expect(data.analysersByContract[contracts[1].address][1]).toBeInstanceOf(Analyser2);
+      expect(data.analysersByContract[contracts[1].address][2]).toBeInstanceOf(Analyser3);
+      expect((data.analysersByContract[contracts[1].address][2] as any).config).toStrictEqual(
+        contracts[1].analysers![0].config,
+      );
+    });
+
+    it('implements blocks cache correctly', async () => {
+      const Analyser = createAnalyserClass('analyser');
+      const data: DataContainer = {} as any;
+      const agentConfig: AgentConfig = {
+        analysers: [{ key: Analyser.Key, config: { changeRate: 1 } }],
+        contracts: [contract1, contract2],
+        maxTrainingData: 12345678,
+      };
+
+      await provideInitialize(data, agentConfig, [Analyser], mockProvider as any)();
+
+      const block1 = { number: 1 };
+      const block2 = { number: 2 };
+
+      mockProvider.getBlock.mockImplementation((number) => {
+        if (number === block1.number) return block1;
+        if (number === block2.number) return block2;
+      });
+
+      expect(await data.blocksCache.fetch(block1.number)).toStrictEqual(block1);
+      expect(await data.blocksCache.fetch(block1.number)).toStrictEqual(block1);
+      expect(mockProvider.getBlock).toBeCalledTimes(1);
+      expect(await data.blocksCache.fetch(block2.number)).toStrictEqual(block2);
+      expect(await data.blocksCache.fetch(block2.number)).toStrictEqual(block2);
+      expect(mockProvider.getBlock).toBeCalledTimes(2);
+    });
+  });
+
   describe('handleBlock()', () => {
-    let data: DependencyContainer;
+    let data: MockDataContainer;
     let handleBlock: HandleBlock;
     let blockEvent: TestBlockEvent;
 
     beforeEach(() => {
-      data = createMockDependencyContainer(mockProvider, []);
+      data = createMockDataContainer(mockProvider, []);
       handleBlock = provideHandleBlock(data);
       blockEvent = new TestBlockEvent();
     });
 
-    it('caches current block for next handleTransaction() calls', async () => {
-      const block = { number: 1234 };
-      blockEvent.setNumber(block.number);
-      mockProvider.getBlock.mockResolvedValue(block);
-
-      await handleBlock(blockEvent);
-
-      expect(data.currentBlock).toStrictEqual(block);
-      expect(mockProvider.getBlock).toHaveBeenNthCalledWith(1, block.number);
-    });
-
     it("doesn't train analysers if there are no training transactions", async () => {
       data.contracts = [contract1];
-      data.analysersByContract[contract1.address] = [mockAnalyser] as any;
+      data.analysersByContract[contract1.address] = [mockAnalyser];
       data.transactionsByContract[contract1.address] = [];
 
       await handleBlock(blockEvent);
@@ -101,7 +179,7 @@ describe('High Priority Fee Agent', () => {
 
     it("doesn't train analysers if contract has no new transactions", async () => {
       data.contracts = [contract1];
-      data.analysersByContract[contract1.address] = [mockAnalyser] as any;
+      data.analysersByContract[contract1.address] = [mockAnalyser];
       data.transactionsByContract[contract1.address] = [{ timestamp: 1, priorityFeePerGas: 1 }];
       data.isTrainedByContract[contract1.address] = true;
 
@@ -112,7 +190,7 @@ describe('High Priority Fee Agent', () => {
 
     it('trains analysers if contract has new transactions', async () => {
       data.contracts = [contract1];
-      data.analysersByContract[contract1.address] = [mockAnalyser] as any;
+      data.analysersByContract[contract1.address] = [mockAnalyser];
       data.transactionsByContract[contract1.address] = [{ timestamp: 1, priorityFeePerGas: 1 }];
       data.isTrainedByContract[contract1.address] = false;
 
@@ -129,9 +207,9 @@ describe('High Priority Fee Agent', () => {
       const mockAnalyser3 = createMockAnalyser();
 
       data.contracts = [contract1, contract2, contract3];
-      data.analysersByContract[contract1.address] = [mockAnalyser11, mockAnalyser12] as any;
-      data.analysersByContract[contract2.address] = [mockAnalyser2] as any;
-      data.analysersByContract[contract3.address] = [mockAnalyser3] as any;
+      data.analysersByContract[contract1.address] = [mockAnalyser11, mockAnalyser12];
+      data.analysersByContract[contract2.address] = [mockAnalyser2];
+      data.analysersByContract[contract3.address] = [mockAnalyser3];
       data.transactionsByContract[contract1.address] = [{ timestamp: 1, priorityFeePerGas: 1 }];
       data.transactionsByContract[contract2.address] = [{ timestamp: 1, priorityFeePerGas: 1 }];
       data.transactionsByContract[contract3.address] = [{ timestamp: 1, priorityFeePerGas: 1 }];
@@ -154,7 +232,7 @@ describe('High Priority Fee Agent', () => {
 
     it('limits training transactions', async () => {
       data.contracts = [contract1];
-      data.analysersByContract[contract1.address] = [mockAnalyser] as any;
+      data.analysersByContract[contract1.address] = [mockAnalyser];
       data.transactionsByContract[contract1.address] = [
         { timestamp: 1, priorityFeePerGas: 1 },
         { timestamp: 2, priorityFeePerGas: 2 },
@@ -170,40 +248,43 @@ describe('High Priority Fee Agent', () => {
   });
 
   describe('handleTransaction()', () => {
-    let data: DependencyContainer;
+    let data: MockDataContainer;
     let txEvent: TestTransactionEvent;
     let handleTransaction: HandleTransaction;
+
+    const mockBlock = {
+      number: 12345,
+      timestamp: 222222,
+      baseFeePerGas: EthersBigNumber.from(1234),
+    };
 
     beforeEach(() => {
       resetMockProvider(mockProvider);
       resetMockAnalyser(mockAnalyser);
-      data = createMockDependencyContainer(mockProvider, []) as any;
-      data.currentBlock = {
-        number: 12345,
-        timestamp: 222222,
-        baseFeePerGas: EthersBigNumber.from(1234),
-      } as any;
+      data = createMockDataContainer(mockProvider, []);
+      data.blocksCache.fetch.mockResolvedValue(mockBlock);
       handleTransaction = provideHandleTransaction(data);
       txEvent = new TestTransactionEvent();
-      txEvent.setBlock(data.currentBlock!.number);
+      txEvent.setBlock(mockBlock.number);
     });
 
     it('skips transaction to non-specified contract', async () => {
       data.contracts = [contract1, contract2];
-      data.analysersByContract[contract1.address] = [mockAnalyser] as any;
-      data.analysersByContract[contract2.address] = [mockAnalyser] as any;
+      data.analysersByContract[contract1.address] = [mockAnalyser];
+      data.analysersByContract[contract2.address] = [mockAnalyser];
 
       txEvent.setTo(contract3.address);
 
       await handleTransaction(txEvent);
 
+      expect(mockProvider.getBlock).toBeCalledTimes(0);
       expect(mockProvider.getTransaction).toBeCalledTimes(0);
     });
 
     it('skips transaction if block has no baseFeePerGas', async () => {
       data.contracts = [contract1];
-      data.analysersByContract[contract1.address] = [mockAnalyser] as any;
-      data.currentBlock = { ...data.currentBlock, baseFeePerGas: null } as any;
+      data.analysersByContract[contract1.address] = [mockAnalyser];
+      data.blocksCache.fetch.mockResolvedValue({ ...mockBlock, baseFeePerGas: null });
 
       txEvent.setTo(contract1.address);
 
@@ -214,12 +295,12 @@ describe('High Priority Fee Agent', () => {
 
     it('skips transaction without maxPriorityFeePerGas or maxFeePerGas', async () => {
       data.contracts = [contract1];
-      data.analysersByContract[contract1.address] = [mockAnalyser] as any;
+      data.analysersByContract[contract1.address] = [mockAnalyser];
 
       txEvent.setTo(contract1.address);
       mockProvider.getTransaction.mockResolvedValueOnce({
         maxPriorityFeePerGas: null,
-        maxFeePerGas: 1234,
+        maxFeePerGas: EthersBigNumber.from(1234),
       });
 
       await handleTransaction(txEvent);
@@ -227,7 +308,7 @@ describe('High Priority Fee Agent', () => {
       expect(mockAnalyser.isAnomaly).toBeCalledTimes(0);
 
       mockProvider.getTransaction.mockResolvedValueOnce({
-        maxPriorityFeePerGas: 1234,
+        maxPriorityFeePerGas: EthersBigNumber.from(1234),
         maxFeePerGas: null,
       });
 
@@ -240,15 +321,15 @@ describe('High Priority Fee Agent', () => {
       data.contracts = [contract1];
       data.transactionsByContract[contract1.address] = [];
       data.isTrainedByContract[contract1.address] = true;
-      data.analysersByContract[contract1.address] = [mockAnalyser] as any;
+      data.analysersByContract[contract1.address] = [mockAnalyser];
 
       txEvent.setTo(contract1.address);
       txEvent.setHash('HASH1');
-      txEvent.setTimestamp(data.currentBlock!.timestamp);
-      data.currentBlock = {
-        ...data.currentBlock,
+      txEvent.setTimestamp(mockBlock.timestamp);
+      data.blocksCache.fetch.mockResolvedValue({
+        ...mockBlock,
         baseFeePerGas: EthersBigNumber.from(100).mul(1e9),
-      } as any;
+      });
       mockProvider.getTransaction.mockResolvedValueOnce({
         maxPriorityFeePerGas: EthersBigNumber.from(300).mul(1e9),
         maxFeePerGas: EthersBigNumber.from(300).mul(1e9),
@@ -288,10 +369,13 @@ describe('High Priority Fee Agent', () => {
     it('return empty findings if analyser returns isAnomaly = false', async () => {
       data.contracts = [contract1];
       data.transactionsByContract[contract1.address] = [];
-      data.analysersByContract[contract1.address] = [mockAnalyser] as any;
+      data.analysersByContract[contract1.address] = [mockAnalyser];
 
       txEvent.setTo(contract1.address);
-      data.currentBlock = { ...data.currentBlock, baseFeePerGas: EthersBigNumber.from(100) } as any;
+      data.blocksCache.fetch.mockResolvedValue({
+        ...mockBlock,
+        baseFeePerGas: EthersBigNumber.from(100),
+      });
       mockProvider.getTransaction.mockResolvedValueOnce({
         maxPriorityFeePerGas: EthersBigNumber.from(300),
         maxFeePerGas: EthersBigNumber.from(300),
@@ -315,7 +399,10 @@ describe('High Priority Fee Agent', () => {
 
       txEvent.setFrom(sender);
       txEvent.setTo(contract1.address);
-      data.currentBlock = { ...data.currentBlock, baseFeePerGas: EthersBigNumber.from(100) } as any;
+      data.blocksCache.fetch.mockResolvedValue({
+        ...mockBlock,
+        baseFeePerGas: EthersBigNumber.from(100)
+      });
       mockProvider.getTransaction.mockResolvedValueOnce({
         maxPriorityFeePerGas: EthersBigNumber.from(300),
         maxFeePerGas: EthersBigNumber.from(300),
@@ -351,7 +438,10 @@ describe('High Priority Fee Agent', () => {
 
       txEvent.setFrom(sender);
       txEvent.setTo(contract1.address);
-      data.currentBlock = { ...data.currentBlock, baseFeePerGas: EthersBigNumber.from(100) } as any;
+      data.blocksCache.fetch.mockResolvedValue({
+        ...mockBlock,
+        baseFeePerGas: EthersBigNumber.from(100)
+      })
       mockProvider.getTransaction.mockResolvedValueOnce({
         maxPriorityFeePerGas: EthersBigNumber.from(300),
         maxFeePerGas: EthersBigNumber.from(300),

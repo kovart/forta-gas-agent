@@ -6,16 +6,15 @@ import { createInterpolator } from 'range-interpolator';
 import KalmanFilter from 'kalmanjs';
 // @ts-ignore
 import zodiac from 'zodiac-ts';
-import { AnalyserTransaction } from '../types';
+import { AnalyserConfig, AnalyserTransaction } from '../types';
 import { Analyser } from './analyser';
 
 dayjs.extend(isSameOrBefore);
 
-export type HoltWintersAnalyserConfig = {
+export type HoltWintersAnalyserConfig = AnalyserConfig & {
   alpha?: number;
   gamma?: number;
   delta?: number;
-  changeRate: number;
   trainingCycles: number;
   seasonLength: number;
 };

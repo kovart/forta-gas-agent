@@ -1,6 +1,6 @@
 {
   "name": "forta-gas-agent",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "This agent helps to detect unusual high gas usage for specific protocols.",
   "repository": {
     "type": "git",
@@ -33,6 +33,7 @@
     "forta-agent": "^0.1.6",
     "kalmanjs": "^1.1.0",
     "lodash": "^4.17.21",
+    "lru-cache": "^7.10.1",
     "range-interpolator": "^1.0.2",
     "zodiac-ts": "^1.0.3"
   },

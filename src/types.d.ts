@@ -6,36 +6,40 @@ type AnalyserClass = { new (...args: any[]): any; Key: string };
 
 export type AnalyserTransaction = {
   timestamp: number;
-  priorityFeePerGas?: number;
+  priorityFeePerGas: number;
 };
 
 export type AnalyserConfig = {
-  key: string;
-  config?: {
-    [x: string]: any;
-    sensitivity: number;
-  };
+  [x: string]: string | number | object;
+  changeRate: number;
+}
+
+export type AnalyserItemConfig = {
+  key: string; // agent name
+  config?: AnalyserConfig;
 };
 
 export type ContractConfig = {
   name: string;
   address: string;
-  analysers?: AnalyserConfig[];
+  analysers?: AnalyserItemConfig[];
 };
 
 export type AgentConfig = {
   contracts: ContractConfig[];
-  analysers: AnalyserConfig[];
+  analysers: AnalyserItemConfig[];
   maxTrainingData: number;
 };
 
-export type DependencyContainer = {
+export type DataContainer = {
   isInitialized: boolean;
   contracts: ContractConfig[];
   analysersByContract: { [addr: string]: Analyser<AnalyserTransaction>[] };
   transactionsByContract: { [addr: string]: AnalyserTransaction[] };
   isTrainedByContract: { [addr: string]: boolean };
   maxTrainingData: number;
-  currentBlock: Block | null;
+  blocksCache: {
+    fetch: (blockNumber: number) => Promise<Block | undefined>;
+  };
   provider: providers.JsonRpcProvider;
 };
